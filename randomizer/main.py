@@ -1,6 +1,3 @@
-# import sys module
-import pygame
-import sys
 import asyncio
 
 from game import Randomizer  

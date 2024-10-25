@@ -1,5 +1,9 @@
+import asyncio
+
 from game import Randomizer
+
 
 if __name__ == "__main__":
     game = Randomizer()
-    game.main_loop()
+    asyncio.run(game.main_loop())
+    

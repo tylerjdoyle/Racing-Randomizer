@@ -5,8 +5,12 @@ import asyncio
 from models import Racer, Leader
 
 TEAM = [
-    "Test 1"
+    "Test 1",
+    "Racer 2",
+    "Person 3",
+    "Random 4"
 ]
+# Leaders will start a couple seconds after the others to (hopefully) come last and be at the end
 LEADERS = [
 
 ]
