@@ -7,7 +7,7 @@ on:
 
 jobs:
   build-pygbag:
-    name: Racing Randomizer
+    name: Deploy Randomizer
     runs-on: ubuntu-latest
 
     steps:
@@ -18,7 +18,7 @@ jobs:
             python -m pip install pygbag
             echo "Successfully installed pygbag"
             echo "Attempting to build the game"
-            python -m pygbag --build $GITHUB_WORKSPACE/randomizer/main.py
+            python -m pygbag --build ./randomizer/__main__.py
             echo "Successfully built the game and complied to WebAssembly"
 
     - name : "Upload to GitHub pages branch gh-pages"

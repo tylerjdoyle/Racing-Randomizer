@@ -4,7 +4,7 @@ import random
 from models import Racer, Leader
 
 TEAM = [
-
+    "Test 1"
 ]
 LEADERS = [
 
