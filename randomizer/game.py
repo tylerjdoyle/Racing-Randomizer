@@ -1,5 +1,6 @@
 import pygame
 import random
+import asyncio
 
 from models import Racer, Leader
 
@@ -24,11 +25,12 @@ class Randomizer:
         self.clock = pygame.time.Clock()
         self.race_done = False
 
-    def main_loop(self):
+    async def main_loop(self):
         while True:
             self._get_input()
             self._process_game_logic()
             self._draw()
+            await asyncio.sleep(0)
 
     def init_pygame(self): 
         pygame.init()
@@ -69,8 +71,9 @@ class Randomizer:
 
     def _get_input(self):
         for event in pygame.event.get():
-            if event.type == pygame.QUIT or (event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE): 
-                quit()
+            if event.type == pygame.QUIT or (event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE):
+                pygame.quit()
+                sys.exit()  
             if not self.race_done and event.type == pygame.KEYDOWN and event.key == pygame.K_SPACE: 
                 for racer in self.racers:
                     racer.should_move = True
