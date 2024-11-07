@@ -1,5 +1,8 @@
 from pygame.math import Vector2
-# from pygame.transform import rotozoom
+from pygame.sprite import Sprite
+
+import pygame
+
 import random
 
 from utils import load_sprite
@@ -29,14 +32,22 @@ class Racer(GameObject):
         self.finished_text = None
         self.finished_textRect = None
         self.font = font
-        split_name = name.split()
-        self.name = split_name[0]
-        self.initials = "{0}{1}".format(split_name[0][0], split_name[1][0])
+        self.name = name.split(maxsplit=1)[0]
+        self.initials = self._get_short_name(name)
         self.should_move = False
         super().__init__(position, load_sprite("circle"), random.uniform(1, 3))
 
         self.text = font.render(self.initials, False, self.TEXT_COLOR)
         self.textRect = self.text.get_rect()
+
+    def _get_short_name(self, name):
+        split_name = name.split()
+        if len(split_name) > 1:
+            return f"{split_name[0][0]}{split_name[1][0]}"
+        elif len(split_name[0]) > 1:
+            return f"{split_name[0][0]}{split_name[0][1]}"
+        else:
+            return f"{split_name[0][0]}"
 
     def draw(self, surface):
         super().draw(surface)
@@ -100,3 +111,60 @@ class Leader(Racer):
                 super().move()
             else:
                 self.counter += 0.1
+
+class TextBox(Sprite):
+    VALID_CHARS = "`1234567890-=qwertyuiop[]\\asdfghjkl;'zxcvbnm,./"
+    SHIFT_CHARS = '~!@#$%^&*()_+QWERTYUIOP{}|ASDFGHJKL:"ZXCVBNM<>?'
+    
+
+    def __init__(self, font, center):
+        Sprite.__init__(self)
+        self.text = ""
+        self.font = font
+        self.image = self.font.render("Enter your name", False, [0, 0, 0])
+        self.rect = self.image.get_rect()
+        self.rect.center = center
+        self.shift_down = False
+        pygame.scrap.init()
+        pygame.scrap.set_mode(pygame.SCRAP_CLIPBOARD)
+
+    def add_chr(self, char):
+        if char in self.VALID_CHARS and not self.shift_down:
+            self.text += char
+        elif char in self.VALID_CHARS and self.shift_down:
+            self.text += self.SHIFT_CHARS[self.VALID_CHARS.index(char)]
+        self.update()
+
+    def update(self):
+        old_rect_pos = self.rect.center
+        self.image = self.font.render(self.text, False, [0, 0, 0])
+        self.rect = self.image.get_rect()
+        self.rect.center = old_rect_pos
+
+    def process_input(self, event):
+        if event.type == pygame.KEYUP:
+            if event.key in [pygame.K_RSHIFT, pygame.K_LSHIFT]:
+                self.shift_down = False
+        if event.type == pygame.KEYDOWN:
+            if (event.key == pygame.K_v) and (event.mod & (pygame.KMOD_META or pygame.KMOD_CTRL)):
+                self.text += pygame.scrap.get("text/plain;charset=utf-8").decode()
+                self.update()
+                return None
+            self.add_chr(pygame.key.name(event.key))
+            if event.key == pygame.K_SPACE:
+                self.text += " "
+                self.update()
+            if event.key in [pygame.K_RSHIFT, pygame.K_LSHIFT]:
+                self.shift_down = True
+            if event.key in [pygame.K_LCTRL, pygame.K_RCTRL]:
+                self.ctrl_down = True
+            if event.key == pygame.K_BACKSPACE:
+                self.text = self.text[:-1]
+                self.update()
+            if event.key == pygame.K_RETURN:
+                if len(self.text) > 0:
+                    return self.text
+        return None
+                    
+    def draw(self, surface):
+        surface.blit(self.image, self.rect)
