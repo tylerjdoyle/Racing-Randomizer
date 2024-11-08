@@ -4,21 +4,13 @@ import asyncio
 import sys
 from enum import Enum
 
-from models import Racer, Leader, TextBox
+from models import Racer, DelayedRacer, TextBox
 from utils import blit_text, BLACK, WHITE
 
-TEAM = [
-    "Test",
-    "P",
-    "Random Name"
-]
-# Leaders will start a couple seconds after the others to (hopefully) come last and be at the end
-LEADERS = [
-
-]
 width, height = 1500, 750
-num_people = len(TEAM)+len(LEADERS)
 grass_padding = 100 # 50 padding on top/bottom
+
+FONT_SIZE = 18
 
 BRICK_RED = (170, 74, 68)
 GRASS = (19, 109, 21)
@@ -78,18 +70,19 @@ class Randomizer:
 
     def init_screen(self): 
         self.screen = pygame.display.set_mode((width, height))
-        self.font = pygame.font.Font('freesansbold.ttf', 18)
+        self.font = pygame.font.Font('freesansbold.ttf', FONT_SIZE)
         self._advance_game_state()
     
     ### Setup helpers ###
 
     def _setup_input(self):
-        self.text_box = TextBox(self.font, (width/2, height/2))
+        self.text_box = TextBox(self.font, FONT_SIZE, (width/2, 20), "Enter racers one per line (max 31). Empty lines will be ignored")
+        self.info_box = TextBox(self.font, FONT_SIZE, (width - 100, height - 20), "Press -> to start...", False)
         self._advance_game_state()
 
     def _setup_race(self):
         surf_height = height - grass_padding
-        padding = surf_height/num_people
+        padding = surf_height/self.num_people
 
         self._setup_ground(padding, surf_height)
         self._setup_racers(padding)
@@ -99,8 +92,8 @@ class Randomizer:
         thickness = 8
         self.surf = pygame.Surface((width, surf_height+thickness)) # Adds extra top+bottom padding
         self.surf.fill(BRICK_RED)
-        padding = surf_height/num_people
-        for i in range(num_people+1):
+        padding = surf_height/self.num_people
+        for i in range(self.num_people+1):
             # Lines are rendered from the center (top-center if even)
             adjustment = thickness / 2 - 1 if thickness % 2 == 0 else thickness / 2
             offset = i * padding + adjustment
@@ -110,16 +103,13 @@ class Randomizer:
         pygame.draw.line(self.surf, BLACK, (width-self.len_from_edge, 0), (width-self.len_from_edge, height), width=thickness) # finish
 
     def _setup_racers(self, padding):
-        people = TEAM+LEADERS
+        people = self.input
         random.shuffle(people)
         self.racers = []
-        for i in range(num_people):
+        for i in range(self.num_people):
             starting_pos = (self.len_from_edge / 2, (padding * i) + 50 + (padding / 2))
             name = people[i]
-            if name in TEAM:
-                racer = Racer(name, starting_pos, self.font)
-            else:
-                racer = Leader(name, starting_pos, self.font)
+            racer = Racer(name, starting_pos, self.font)
             self.racers.append(racer)
         self.finished = []
 
@@ -133,6 +123,8 @@ class Randomizer:
             if self.game_state == GameState.INPUT:
                 self.input = self.text_box.process_input(event)
                 if self.input != None:
+                    self.input = list(filter(None, self.input))
+                    self.num_people = len(self.input)
                     print(f"INPUT {self.input}")
                     self._advance_game_state()
             if self.game_state == GameState.RACE_BEGIN:
@@ -156,7 +148,7 @@ class Randomizer:
                 racer.move()
                 if racer.is_finished(w - self.len_from_edge + racer.radius, len(self.finished)):
                     self.finished.append(racer)
-            if len(self.finished) == num_people:
+            if len(self.finished) == self.num_people:
                 self._finish_race()
 
     def _finish_race(self):
@@ -182,6 +174,7 @@ class Randomizer:
         if self.game_state == GameState.INPUT:
             self.screen.fill(WHITE)
             self.text_box.draw(self.screen)
+            self.info_box.draw(self.screen)
         if self.game_state.in_race():
             self.screen.fill(GRASS)
             self.screen.blit(self.surf, self.surf.get_rect(center = self.screen.get_rect().center))

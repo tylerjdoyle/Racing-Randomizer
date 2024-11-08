@@ -4,8 +4,9 @@ from pygame.sprite import Sprite
 import pygame
 
 import random
+import time
 
-from utils import load_sprite
+from utils import load_sprite, BLACK
 
 class GameObject: 
     def __init__(self, position, sprite, velocity):
@@ -93,7 +94,7 @@ class Racer(GameObject):
     #     blit_position = self.position - rotated_surface_size * 0.5
     #     surface.blit(rotated_surface, blit_position)
 
-class Leader(Racer):
+class DelayedRacer(Racer):
     DELAY = 10
 
     def __init__(self, name, position, font):
@@ -113,58 +114,82 @@ class Leader(Racer):
                 self.counter += 0.1
 
 class TextBox(Sprite):
-    VALID_CHARS = "`1234567890-=qwertyuiop[]\\asdfghjkl;'zxcvbnm,./"
-    SHIFT_CHARS = '~!@#$%^&*()_+QWERTYUIOP{}|ASDFGHJKL:"ZXCVBNM<>?'
-    
-
-    def __init__(self, font, center):
+    def __init__(self, font, font_size, center, input_text="", show_cursor=True):
         Sprite.__init__(self)
-        self.text = ""
+        self.text = [""]
+        self.current_line = 0
         self.font = font
-        self.image = self.font.render("Enter your name", False, [0, 0, 0])
-        self.rect = self.image.get_rect()
-        self.rect.center = center
-        self.shift_down = False
+        self.font_size = font_size
+        self.root = center
+        self.show_cursor = show_cursor
+
+        # Create initial input text
+        image = self.font.render(input_text, False, BLACK)
+        rect = image.get_rect()
+        rect.center = center
+        self.images = [(image, rect)]
+        
+        # Init clipboard scrapper
         pygame.scrap.init()
         pygame.scrap.set_mode(pygame.SCRAP_CLIPBOARD)
 
-    def add_chr(self, char):
-        if char in self.VALID_CHARS and not self.shift_down:
-            self.text += char
-        elif char in self.VALID_CHARS and self.shift_down:
-            self.text += self.SHIFT_CHARS[self.VALID_CHARS.index(char)]
+    def add_text(self, text):
+        for char in text:
+            if self.current_line >= 32:
+                continue
+            if char == "\n":
+                self.current_line += 1
+                self.text.append("")
+            else:
+                self.text[self.current_line] += char
+            if len(self.text[self.current_line]) == 100:
+                self.current_line += 1
+                self.text.append("")
+        self.update()
+
+    def remove_char(self):
+        if len(self.text) != 1 and len(self.text[self.current_line]) == 0:
+            self.text.pop()
+            self.current_line -= 1
+        else:
+            self.text[self.current_line] = self.text[self.current_line][:-1]
         self.update()
 
     def update(self):
-        old_rect_pos = self.rect.center
-        self.image = self.font.render(self.text, False, [0, 0, 0])
-        self.rect = self.image.get_rect()
-        self.rect.center = old_rect_pos
+        self.images = []
+        for row, line in enumerate(self.text):
+            img = self.font.render(line, False, BLACK)
+            rect = img.get_rect()
+            rect.center = (self.root[0], self.root[1] + (row * (self.font_size + 5)))
+            self.images.append((img, rect))
 
     def process_input(self, event):
-        if event.type == pygame.KEYUP:
-            if event.key in [pygame.K_RSHIFT, pygame.K_LSHIFT]:
-                self.shift_down = False
+        if event.type == pygame.TEXTINPUT:
+            self.add_text(event.text)
         if event.type == pygame.KEYDOWN:
             if (event.key == pygame.K_v) and (event.mod & (pygame.KMOD_META or pygame.KMOD_CTRL)):
-                self.text += pygame.scrap.get("text/plain;charset=utf-8").decode()
-                self.update()
-                return None
-            self.add_chr(pygame.key.name(event.key))
-            if event.key == pygame.K_SPACE:
-                self.text += " "
-                self.update()
-            if event.key in [pygame.K_RSHIFT, pygame.K_LSHIFT]:
-                self.shift_down = True
-            if event.key in [pygame.K_LCTRL, pygame.K_RCTRL]:
-                self.ctrl_down = True
+                self.add_text(pygame.scrap.get("text/plain;charset=utf-8").decode())
             if event.key == pygame.K_BACKSPACE:
-                self.text = self.text[:-1]
-                self.update()
+                self.remove_char()
             if event.key == pygame.K_RETURN:
-                if len(self.text) > 0:
-                    return self.text
+                self.add_text("\n")
+            if event.key == pygame.K_UP:
+                if self.current_line != 0:
+                    self.current_line -= 1
+            if event.key == pygame.K_DOWN:
+                if self.current_line < len(self.images) - 1:
+                    self.current_line += 1
+            if event.key == pygame.K_RIGHT:
+                for text in self.text:
+                    if text != "":
+                        return self.text
         return None
-                    
+    
     def draw(self, surface):
-        surface.blit(self.image, self.rect)
+        for (image, rect) in self.images:
+            surface.blit(image, rect)
+        current_rect = self.images[self.current_line][1]
+        if self.show_cursor:
+            self.cursor = pygame.Rect(current_rect.topright, (3, current_rect.height))
+            if time.time() % 1 > 0.5:
+                pygame.draw.rect(surface, BLACK, self.cursor)
