@@ -33,7 +33,7 @@ class Racer(GameObject):
         self.finished_text = None
         self.finished_textRect = None
         self.font = font
-        self.name = name.split(maxsplit=1)[0]
+        self.name = name
         self.initials = self._get_short_name(name)
         self.should_move = False
         super().__init__(position, load_sprite("circle"), random.uniform(1, 3))
