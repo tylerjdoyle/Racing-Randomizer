@@ -66,7 +66,7 @@ class Randomizer:
 
     def init_pygame(self): 
         pygame.init()
-        pygame.display.set_caption("AO Randomizer")
+        pygame.display.set_caption("Racing Randomizer")
 
     def init_screen(self): 
         self.screen = pygame.display.set_mode((width, height))

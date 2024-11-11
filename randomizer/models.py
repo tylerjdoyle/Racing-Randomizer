@@ -128,10 +128,6 @@ class TextBox(Sprite):
         rect = image.get_rect()
         rect.center = center
         self.images = [(image, rect)]
-        
-        # Init clipboard scrapper
-        pygame.scrap.init()
-        pygame.scrap.set_mode(pygame.SCRAP_CLIPBOARD)
 
     def add_text(self, text):
         for char in text:
@@ -168,7 +164,7 @@ class TextBox(Sprite):
             self.add_text(event.text)
         if event.type == pygame.KEYDOWN:
             if (event.key == pygame.K_v) and (event.mod & (pygame.KMOD_META or pygame.KMOD_CTRL)):
-                self.add_text(pygame.scrap.get("text/plain;charset=utf-8").decode())
+                pass
             if event.key == pygame.K_BACKSPACE:
                 self.remove_char()
             if event.key == pygame.K_RETURN:
