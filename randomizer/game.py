@@ -2,10 +2,11 @@ import pygame
 import random
 import asyncio
 import sys
+import pyperclip
 from enum import Enum
 
-from models import Racer, DelayedRacer, TextBox
-from utils import blit_text, BLACK, WHITE
+from models import Racer, TextBox
+from utils import BLACK, WHITE
 
 width, height = 1500, 750
 grass_padding = 100 # 50 padding on top/bottom
@@ -76,8 +77,8 @@ class Randomizer:
     ### Setup helpers ###
 
     def _setup_input(self):
-        self.text_box = TextBox(self.font, FONT_SIZE, (width/2, 20), "Enter racers one per line (max 31). Empty lines will be ignored")
-        self.info_box = TextBox(self.font, FONT_SIZE, (width - 100, height - 20), "Press -> to start...", False)
+        self.text_box = TextBox(self.font, FONT_SIZE, (width/2, 20), ["Enter racers one per line (max 31). Empty lines will be ignored"])
+        self.info_box = TextBox(self.font, FONT_SIZE, (width - 100, height - 20), ["Press -> to start..."], False)
         self._advance_game_state()
 
     def _setup_race(self):
@@ -113,6 +114,9 @@ class Randomizer:
             self.racers.append(racer)
         self.finished = []
 
+    def _setup_finish_box(self, str):
+        self.final_box = TextBox(self.font, FONT_SIZE, (width/2, 20), str, False)
+
     ### Input ###
 
     def _get_input(self):
@@ -123,10 +127,11 @@ class Randomizer:
             if self.game_state == GameState.INPUT:
                 self.input = self.text_box.process_input(event)
                 if self.input != None:
-                    self.input = list(filter(None, self.input))
+                    self.input = [ input for input in list(filter(None, self.input)) if not input.isspace() ]
                     self.num_people = len(self.input)
-                    print(f"INPUT {self.input}")
-                    self._advance_game_state()
+                    if self.num_people > 0:
+                        print(f"INPUT {self.input}")
+                        self._advance_game_state()
             if self.game_state == GameState.RACE_BEGIN:
                 if event.type == pygame.KEYDOWN and event.key == pygame.K_SPACE:
                     self.game_state = self.game_state.advance_state()
@@ -152,20 +157,23 @@ class Randomizer:
                 self._finish_race()
 
     def _finish_race(self):
-        self.game_state = self.game_state.advance_state()
         for i in range(len(self.finished)): 
             finisher = self.finished[i]
             print("{0}. {1}".format(i+1, finisher.name))
         
-        blit_text(self.surf, self._create_finish_str(), (20,20), self.font)
+        str = self._create_finish_str()
+        try:
+            pyperclip.copy(str)
+        except:
+            print("No clipboard on Linux")
+        self._setup_finish_box(str)
+        self.game_state = self.game_state.advance_state()
 
     def _create_finish_str(self):
-        str = ''
+        str = []
         for i in range(len(self.finished)): 
             finisher = self.finished[i]
-            str += "{0}. {1}".format(i+1, finisher.name)
-            if i < len(self.finished):
-                str += "\n\r"
+            str.append("{0}. {1}".format(i+1, finisher.name))
         return str
 
     ### Drawing ###
@@ -180,6 +188,8 @@ class Randomizer:
             self.screen.blit(self.surf, self.surf.get_rect(center = self.screen.get_rect().center))
             for racer in self.racers:
                 racer.draw(self.screen)
+        if self.game_state == GameState.RACE_DONE:
+            self.final_box.draw(self.screen)
         pygame.display.update()
         pygame.display.flip()
         self.clock.tick(60)

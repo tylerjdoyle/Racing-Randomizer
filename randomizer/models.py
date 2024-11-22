@@ -1,12 +1,14 @@
 from pygame.math import Vector2
 from pygame.sprite import Sprite
+# from pygame.transform import rotozoom
 
 import pygame
+import pyperclip
 
 import random
 import time
 
-from utils import load_sprite, BLACK
+from utils import load_sprite, BLACK, UP
 
 class GameObject: 
     def __init__(self, position, sprite, velocity):
@@ -36,6 +38,7 @@ class Racer(GameObject):
         self.name = name
         self.initials = self._get_short_name(name)
         self.should_move = False
+        # self.direction = Vector2(0, 0)
         super().__init__(position, load_sprite("circle"), random.uniform(1, 3))
 
         self.text = font.render(self.initials, False, self.TEXT_COLOR)
@@ -54,11 +57,16 @@ class Racer(GameObject):
         super().draw(surface)
         self.textRect.center = self.position
         surface.blit(self.text, self.textRect)
+        # angle = self.direction.angle_to(UP)
+        # rotated_surface = rotozoom(self.sprite, angle, 1.0)
+        # rotated_surface_size = Vector2(rotated_surface.get_size())
+        # blit_position = self.position - rotated_surface_size * 0.5
+        # surface.blit(rotated_surface, blit_position)
         if self.finished_text is not None:
             self.finished_textRect.center = self.position + Vector2(self.radius * 2, 0)
             surface.blit(self.finished_text, self.finished_textRect)
 
-
+    # Scale based on distance from end
     def accelerate(self):
         if self.should_move:
             rand_num = random.uniform(0, 10)
@@ -73,7 +81,6 @@ class Racer(GameObject):
         if self.should_move:
             super().move()      
             
-            
     def is_finished(self, finish_pos, num_finishers):
         if self.should_move and self.position.x > finish_pos:
             self.should_move = False
@@ -82,39 +89,13 @@ class Racer(GameObject):
             return True
 
     # TODO: add little animations later
-    # def rotate(self, clockwise=True):
-    #     dir = 1 if clockwise else -1
-    #     angle = dir * self.MANUVERABILITY
-    #     self.direction.rotate_ip(angle)
-
-    # def draw(self, surface):
-    #     angle = self.direction.angle_to(UP)
-    #     rotated_surface = rotozoom(self.sprite, angle, 1.0)
-    #     rotated_surface_size = Vector2(rotated_surface.get_size())
-    #     blit_position = self.position - rotated_surface_size * 0.5
-    #     surface.blit(rotated_surface, blit_position)
-
-class DelayedRacer(Racer):
-    DELAY = 10
-
-    def __init__(self, name, position, font):
-        self.counter = 0
-        super().__init__(name, position, font)
-
-    def accelerate(self):
-        if self.should_move:
-            if self.counter > self.DELAY:
-                super().accelerate()
-
-    def move(self):
-        if self.should_move:
-            if self.counter > self.DELAY:
-                super().move()
-            else:
-                self.counter += 0.1
+    def rotate(self, clockwise=True):
+        dir = 1 if clockwise else -1
+        angle = dir * self.MANUVERABILITY
+        self.direction.rotate_ip(angle)
 
 class TextBox(Sprite):
-    def __init__(self, font, font_size, center, input_text="", show_cursor=True):
+    def __init__(self, font, font_size, center, input_text=[], show_cursor=True):
         Sprite.__init__(self)
         self.text = [""]
         self.current_line = 0
@@ -124,10 +105,13 @@ class TextBox(Sprite):
         self.show_cursor = show_cursor
 
         # Create initial input text
-        image = self.font.render(input_text, False, BLACK)
-        rect = image.get_rect()
-        rect.center = center
-        self.images = [(image, rect)]
+        self.images = []
+        for i in range(len(input_text)):
+            text = input_text[i]
+            image = self.font.render(text, False, BLACK)
+            rect = image.get_rect()
+            rect.center = self._get_offset(i)
+            self.images.append((image, rect))
 
     def add_text(self, text):
         for char in text:
@@ -143,6 +127,9 @@ class TextBox(Sprite):
                 self.text.append("")
         self.update()
 
+    def _get_offset(self, row):
+        return (self.root[0], self.root[1] + (row * (self.font_size + 5)))
+
     def remove_char(self):
         if len(self.text) != 1 and len(self.text[self.current_line]) == 0:
             self.text.pop()
@@ -156,7 +143,7 @@ class TextBox(Sprite):
         for row, line in enumerate(self.text):
             img = self.font.render(line, False, BLACK)
             rect = img.get_rect()
-            rect.center = (self.root[0], self.root[1] + (row * (self.font_size + 5)))
+            rect.center = self._get_offset(row)
             self.images.append((img, rect))
 
     def process_input(self, event):
@@ -164,7 +151,10 @@ class TextBox(Sprite):
             self.add_text(event.text)
         if event.type == pygame.KEYDOWN:
             if (event.key == pygame.K_v) and (event.mod & (pygame.KMOD_META or pygame.KMOD_CTRL)):
-                pass
+                try: 
+                    self.add_text(pyperclip.paste())
+                except:
+                    print("No clipboard on Linux")
             if event.key == pygame.K_BACKSPACE:
                 self.remove_char()
             if event.key == pygame.K_RETURN:

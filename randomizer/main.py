@@ -1,3 +1,4 @@
+import pyperclip
 import asyncio
 
 from game import Randomizer  
