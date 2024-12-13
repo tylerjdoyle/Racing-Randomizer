@@ -5,8 +5,8 @@ import sys
 import pyperclip
 from enum import Enum
 
-from models import Racer, TextBox
-from utils import BLACK, WHITE
+from models import Racer, TextBox, SelectBox, TypeableTextBox
+from utils import BLACK, WHITE, read_json
 
 width, height = 1500, 750
 grass_padding = 100 # 50 padding on top/bottom
@@ -20,29 +20,25 @@ class GameState(Enum):
     INIT_SCREEN = 0
     INIT_INPUT = 1
     INPUT = 2
+    SELECTION = 2.5 # Managed outside of advance_state
     END_INPUT = 3
-    RACE_BEGIN = 5
-    RACE_RUNNING = 6
-    RACE_DONE = 7
+    RACE_BEGIN = 4
+    RACE_RUNNING = 5
+    RACE_DONE = 6
 
     def advance_state(self):
-        if self == GameState.INIT_SCREEN:
-            new_state = GameState.INIT_INPUT
-        elif self == GameState.INIT_INPUT:
-            new_state = GameState.INPUT
-        elif self == GameState.INPUT:
-            new_state = GameState.END_INPUT
-        elif self == GameState.END_INPUT:
-            new_state = GameState.RACE_BEGIN
-        elif self == GameState.RACE_BEGIN:
-            new_state = GameState.RACE_RUNNING
-        elif self == GameState.RACE_RUNNING or self == GameState.RACE_DONE:
-            new_state = GameState.RACE_DONE
+        new_state = GameState(self.value + 1)
         print(f"Advancing state from {self} to {new_state}")
         return new_state
     
     def in_race(self):
         return self == GameState.RACE_BEGIN or self == GameState.RACE_RUNNING or self == GameState.RACE_DONE
+
+INSTRUCTION_TEXT = {
+    GameState.INPUT: ["CMD+E to load from list", "Press -> to start..."],
+    GameState.SELECTION: ["Press <- to go back", "Press -> to select"],
+    GameState.RACE_BEGIN: ["", "Press space to start race!"]
+}
 
 class Randomizer: 
     def __init__(self):
@@ -77,8 +73,12 @@ class Randomizer:
     ### Setup helpers ###
 
     def _setup_input(self):
-        self.text_box = TextBox(self.font, FONT_SIZE, (width/2, 20), ["Enter racers one per line (max 31). Empty lines will be ignored"])
-        self.info_box = TextBox(self.font, FONT_SIZE, (width - 100, height - 20), ["Press -> to start..."], False)
+        self.input = None
+        self.text_box = TypeableTextBox(self.font, FONT_SIZE, (width/2, 20), ["Enter racers one per line (max 31). Empty lines will be ignored"])
+        self.info_box = TextBox(self.font, FONT_SIZE, (width - 150, height - 40), INSTRUCTION_TEXT[GameState.INPUT])
+        json = read_json("preloaded")
+        print(json.items())
+        self.preloaded_box = SelectBox(self.font, FONT_SIZE, (width/2, 20), json)
         self._advance_game_state()
 
     def _setup_race(self):
@@ -87,6 +87,7 @@ class Randomizer:
 
         self._setup_ground(padding, surf_height)
         self._setup_racers(padding)
+        print("here")
         self._advance_game_state()
 
     def _setup_ground(self, padding, surf_height):
@@ -125,13 +126,31 @@ class Randomizer:
                 pygame.quit()
                 sys.exit()
             if self.game_state == GameState.INPUT:
-                self.input = self.text_box.process_input(event)
-                if self.input != None:
-                    self.input = [ input for input in list(filter(None, self.input)) if not input.isspace() ]
-                    self.num_people = len(self.input)
-                    if self.num_people > 0:
-                        print(f"INPUT {self.input}")
-                        self._advance_game_state()
+                self.text_box.process_input(event)
+                if event.type == pygame.KEYDOWN:
+                    if event.key == pygame.K_RIGHT:
+                        for text in self.text_box.text:
+                            if text != "": # Make sure we have at least 1 valid input
+                                self.input = [ input for input in list(filter(None, self.text_box.text)) if not input.isspace() ]
+                                self.num_people = len(self.input)
+                                if self.num_people > 0:
+                                    print(f"INPUT {self.input}")
+                                    self._advance_game_state()
+                                    self.info_box.update_text(INSTRUCTION_TEXT[GameState.RACE_BEGIN], False)
+                                    break
+                    if (event.key == pygame.K_e) and (event.mod & (pygame.KMOD_META or pygame.KMOD_CTRL)):
+                        self.game_state = GameState.SELECTION
+                        self.info_box.update_text(INSTRUCTION_TEXT[GameState.SELECTION], False)
+            if self.game_state == GameState.SELECTION:
+                self.preloaded_box.process_input(event)
+                if event.type == pygame.KEYDOWN:
+                    if event.key == pygame.K_RETURN or event.key == pygame.K_RIGHT:
+                        self.text_box.update_text(self.preloaded_box.get_current_selection(), True)
+                        self.game_state = GameState.INPUT
+                        self.info_box.update_text(INSTRUCTION_TEXT[GameState.INPUT], False)
+                    if event.key == pygame.K_BACKSPACE or event.key == pygame.K_LEFT:
+                        self.game_state = GameState.INPUT
+                        self.info_box.update_text(INSTRUCTION_TEXT[GameState.INPUT], False)
             if self.game_state == GameState.RACE_BEGIN:
                 if event.type == pygame.KEYDOWN and event.key == pygame.K_SPACE:
                     self.game_state = self.game_state.advance_state()
@@ -183,11 +202,17 @@ class Randomizer:
             self.screen.fill(WHITE)
             self.text_box.draw(self.screen)
             self.info_box.draw(self.screen)
+        if self.game_state == GameState.SELECTION:
+            self.screen.fill(WHITE)
+            self.preloaded_box.draw(self.screen)
+            self.info_box.draw(self.screen)
         if self.game_state.in_race():
             self.screen.fill(GRASS)
             self.screen.blit(self.surf, self.surf.get_rect(center = self.screen.get_rect().center))
             for racer in self.racers:
                 racer.draw(self.screen)
+            if self.game_state == GameState.RACE_BEGIN:
+                self.info_box.draw(self.screen)
         if self.game_state == GameState.RACE_DONE:
             self.final_box.draw(self.screen)
         pygame.display.update()

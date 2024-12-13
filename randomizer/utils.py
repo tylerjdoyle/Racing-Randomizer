@@ -1,5 +1,6 @@
 from pygame.image import load
 from pygame.math import Vector2
+import json
 
 BLACK = (0,0,0)
 WHITE = (255,255,255)
@@ -12,3 +13,9 @@ def load_sprite(name, with_alpha=True):
         return loaded_sprite.convert_alpha()
     else:
         return loaded_sprite.convert()
+    
+def read_json(name):
+    with open(f"./assets/{name}.json", 'r') as file:
+        data = json.load(file)
+        return data
+    return None
