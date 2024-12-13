@@ -88,14 +88,13 @@ class Racer(GameObject):
             self.finished_textRect = self.text.get_rect()
             return True
 
-    # TODO: add little animations later
-    def rotate(self, clockwise=True):
-        dir = 1 if clockwise else -1
-        angle = dir * self.MANUVERABILITY
-        self.direction.rotate_ip(angle)
+    # def rotate(self, clockwise=True):
+    #     dir = 1 if clockwise else -1
+    #     angle = dir * self.MANUVERABILITY
+    #     self.direction.rotate_ip(angle)
 
 class TextBox(Sprite):
-    def __init__(self, font, font_size, center, input_text=[], show_cursor=True):
+    def __init__(self, font, font_size, center, input_text=[], show_cursor=False):
         Sprite.__init__(self)
         self.text = [""]
         self.current_line = 0
@@ -105,15 +104,56 @@ class TextBox(Sprite):
         self.show_cursor = show_cursor
 
         # Create initial input text
-        self.images = []
-        for i in range(len(input_text)):
-            text = input_text[i]
-            image = self.font.render(text, False, BLACK)
-            rect = image.get_rect()
-            rect.center = self._get_offset(i)
-            self.images.append((image, rect))
+        self.update_text(input_text, False)
 
-    def add_text(self, text):
+    def update_text(self, new_text, editable):
+        if not editable:
+            self.images = []
+            for i in range(len(new_text)):
+                text = new_text[i]
+                image = self.font.render(text, False, BLACK)
+                rect = image.get_rect()
+                rect.center = self._get_offset(i)
+                self.images.append((image, rect))
+        else:
+            self.text = new_text
+            self.current_line = len(new_text)-1
+            self.update()
+
+    def _get_offset(self, row):
+        return (self.root[0], self.root[1] + (row * (self.font_size + 5)))
+
+    def update(self):
+        self.images = []
+        for row, line in enumerate(self.text):
+            img = self.font.render(line, False, BLACK)
+            rect = img.get_rect()
+            rect.center = self._get_offset(row)
+            self.images.append((img, rect))
+
+    def process_input(self, event):
+        if event.type == pygame.KEYDOWN:
+            if event.key == pygame.K_UP:
+                if self.current_line != 0:
+                    self.current_line -= 1
+            if event.key == pygame.K_DOWN:
+                if self.current_line < len(self.images) - 1:
+                    self.current_line += 1
+    
+    def draw(self, surface):
+        for (image, rect) in self.images:
+            surface.blit(image, rect)
+        current_rect = self.images[self.current_line][1]
+        if self.show_cursor:
+            self.cursor = pygame.Rect(current_rect.topright, (3, current_rect.height))
+            if time.time() % 1 > 0.5:
+                pygame.draw.rect(surface, BLACK, self.cursor)
+
+class TypeableTextBox(TextBox):
+    def __init__(self, font, font_size, center, input_text=[], show_cursor=True):
+        super().__init__(font, font_size, center, input_text, show_cursor)
+
+    def _add_text(self, text):
         for char in text:
             if self.current_line >= 32:
                 continue
@@ -126,11 +166,8 @@ class TextBox(Sprite):
                 self.current_line += 1
                 self.text.append("")
         self.update()
-
-    def _get_offset(self, row):
-        return (self.root[0], self.root[1] + (row * (self.font_size + 5)))
-
-    def remove_char(self):
+    
+    def _remove_char(self):
         if len(self.text) != 1 and len(self.text[self.current_line]) == 0:
             self.text.pop()
             self.current_line -= 1
@@ -138,44 +175,25 @@ class TextBox(Sprite):
             self.text[self.current_line] = self.text[self.current_line][:-1]
         self.update()
 
-    def update(self):
-        self.images = []
-        for row, line in enumerate(self.text):
-            img = self.font.render(line, False, BLACK)
-            rect = img.get_rect()
-            rect.center = self._get_offset(row)
-            self.images.append((img, rect))
-
     def process_input(self, event):
         if event.type == pygame.TEXTINPUT:
-            self.add_text(event.text)
-        if event.type == pygame.KEYDOWN:
+            self._add_text(event.text)
+        elif event.type == pygame.KEYDOWN:
             if (event.key == pygame.K_v) and (event.mod & (pygame.KMOD_META or pygame.KMOD_CTRL)):
                 try: 
-                    self.add_text(pyperclip.paste())
+                    self._add_text(pyperclip.paste())
                 except:
                     print("No clipboard on Linux")
             if event.key == pygame.K_BACKSPACE:
-                self.remove_char()
+                self._remove_char()
             if event.key == pygame.K_RETURN:
-                self.add_text("\n")
-            if event.key == pygame.K_UP:
-                if self.current_line != 0:
-                    self.current_line -= 1
-            if event.key == pygame.K_DOWN:
-                if self.current_line < len(self.images) - 1:
-                    self.current_line += 1
-            if event.key == pygame.K_RIGHT:
-                for text in self.text:
-                    if text != "":
-                        return self.text
-        return None
+                self._add_text("\n")
+        return super().process_input(event)
     
-    def draw(self, surface):
-        for (image, rect) in self.images:
-            surface.blit(image, rect)
-        current_rect = self.images[self.current_line][1]
-        if self.show_cursor:
-            self.cursor = pygame.Rect(current_rect.topright, (3, current_rect.height))
-            if time.time() % 1 > 0.5:
-                pygame.draw.rect(surface, BLACK, self.cursor)
+class SelectBox(TextBox):
+    def __init__(self, font, font_size, center, selections=[]):
+        self.selections = selections
+        super().__init__(font, font_size, center, [x[0] for x in selections], True)
+    
+    def get_current_selection(self):
+        return self.selections[self.current_line][1]
