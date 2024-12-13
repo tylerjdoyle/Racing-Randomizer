@@ -7,6 +7,7 @@ import pyperclip
 
 import random
 import time
+import math
 
 from utils import load_sprite, BLACK, UP
 
@@ -25,6 +26,7 @@ class GameObject:
         self.position = self.position + (self.velocity, 0)
 
 class Racer(GameObject):
+    # Velocity randomizers
     ACCELERATION = random.uniform(0, 0.3)
     LOW_VARIATION = random.uniform(0, 2)
     HIGH_VARIATION = random.uniform(7, 9)
@@ -32,12 +34,16 @@ class Racer(GameObject):
     TEXT_COLOR = (1, 1, 1)
 
     def __init__(self, name, position, font):
+        # Animation randomizers
+        self.SINE_OFFSET = random.uniform(0, 200)
+
         self.finished_text = None
         self.finished_textRect = None
         self.font = font
         self.name = name
         self.initials = self._get_short_name(name)
         self.should_move = False
+        self.initial_height = position[1]
         # self.direction = Vector2(0, 0)
         super().__init__(position, load_sprite("circle"), random.uniform(1, 3))
 
@@ -66,7 +72,7 @@ class Racer(GameObject):
             self.finished_textRect.center = self.position + Vector2(self.radius * 2, 0)
             surface.blit(self.finished_text, self.finished_textRect)
 
-    # Scale based on distance from end
+    # TODO: Scale based on distance from end
     def accelerate(self):
         if self.should_move:
             rand_num = random.uniform(0, 10)
@@ -79,7 +85,10 @@ class Racer(GameObject):
 
     def move(self):
         if self.should_move:
-            super().move()      
+            super().move()  
+            t = pygame.time.get_ticks() / 2
+            y = math.sin(t/100.0 + self.SINE_OFFSET) * 10
+            self.position = Vector2(self.position.x, self.initial_height + y)
             
     def is_finished(self, finish_pos, num_finishers):
         if self.should_move and self.position.x > finish_pos:
