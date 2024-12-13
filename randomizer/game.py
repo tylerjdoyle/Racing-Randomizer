@@ -36,7 +36,8 @@ class GameState(Enum):
 
 INSTRUCTION_TEXT = {
     GameState.INPUT: ["CMD+E to load from list", "Press -> to start..."],
-    GameState.SELECTION: ["<- to go back", "-> to select"]
+    GameState.SELECTION: ["Press <- to go back", "Press -> to select"],
+    GameState.RACE_BEGIN: ["", "Press space to start race!"]
 }
 
 class Randomizer: 
@@ -135,6 +136,7 @@ class Randomizer:
                                 if self.num_people > 0:
                                     print(f"INPUT {self.input}")
                                     self._advance_game_state()
+                                    self.info_box.update_text(INSTRUCTION_TEXT[GameState.RACE_BEGIN], False)
                                     break
                     if (event.key == pygame.K_e) and (event.mod & (pygame.KMOD_META or pygame.KMOD_CTRL)):
                         self.game_state = GameState.SELECTION
@@ -209,6 +211,8 @@ class Randomizer:
             self.screen.blit(self.surf, self.surf.get_rect(center = self.screen.get_rect().center))
             for racer in self.racers:
                 racer.draw(self.screen)
+            if self.game_state == GameState.RACE_BEGIN:
+                self.info_box.draw(self.screen)
         if self.game_state == GameState.RACE_DONE:
             self.final_box.draw(self.screen)
         pygame.display.update()
