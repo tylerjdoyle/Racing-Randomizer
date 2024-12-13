@@ -191,9 +191,10 @@ class TypeableTextBox(TextBox):
         return super().process_input(event)
     
 class SelectBox(TextBox):
-    def __init__(self, font, font_size, center, selections=[]):
-        self.selections = selections
-        super().__init__(font, font_size, center, [x[0] for x in selections], True)
+    def __init__(self, font, font_size, center, selections_json):
+        self.selections = selections_json
+        super().__init__(font, font_size, center, [x[0] for x in self.selections.items()], True)
     
     def get_current_selection(self):
-        return self.selections[self.current_line][1]
+        options = [x[1] for x in self.selections.items()]
+        return options[self.current_line]

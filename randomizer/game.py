@@ -6,7 +6,7 @@ import pyperclip
 from enum import Enum
 
 from models import Racer, TextBox, SelectBox, TypeableTextBox
-from utils import BLACK, WHITE
+from utils import BLACK, WHITE, read_json
 
 width, height = 1500, 750
 grass_padding = 100 # 50 padding on top/bottom
@@ -15,37 +15,6 @@ FONT_SIZE = 18
 
 BRICK_RED = (170, 74, 68)
 GRASS = (19, 109, 21)
-
-PRELOADED = [
-    (
-        "Dev Standup", [
-            "TD",
-            "KB",
-            "MR",
-            "CC",
-            "DT",
-            "DY",
-            "CB",
-        ],
-    ),
-    (
-        "Full Team", [
-            "TD",
-            "KB",
-            "MR",
-            "CC",
-            "DT",
-            "DY",
-            "CB",
-            "HH",
-            "DR",
-            "JN",
-            "AD",
-            "TL",
-            "JW",
-        ]
-    )
-]
 
 class GameState(Enum):
     INIT_SCREEN = 0
@@ -106,7 +75,9 @@ class Randomizer:
         self.input = None
         self.text_box = TypeableTextBox(self.font, FONT_SIZE, (width/2, 20), ["Enter racers one per line (max 31). Empty lines will be ignored"])
         self.info_box = TextBox(self.font, FONT_SIZE, (width - 150, height - 40), INSTRUCTION_TEXT[GameState.INPUT])
-        self.preloaded_box = SelectBox(self.font, FONT_SIZE, (width/2, 20), PRELOADED)
+        json = read_json("preloaded")
+        print(json.items())
+        self.preloaded_box = SelectBox(self.font, FONT_SIZE, (width/2, 20), json)
         self._advance_game_state()
 
     def _setup_race(self):
