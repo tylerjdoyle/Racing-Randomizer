@@ -37,7 +37,8 @@ class GameState(Enum):
 INSTRUCTION_TEXT = {
     GameState.INPUT: ["CMD+E to load from list", "Press -> to start..."],
     GameState.SELECTION: ["Press <- to go back", "Press -> to select"],
-    GameState.RACE_BEGIN: ["", "Press space to start race!"]
+    GameState.RACE_BEGIN: ["", "Press space to start race!"],
+    GameState.RACE_DONE: ["", "Press R to restart race"]
 }
 
 class Randomizer: 
@@ -197,6 +198,7 @@ class Randomizer:
         except:
             print("No clipboard on Linux")
         self._setup_finish_box(str)
+        self.info_box.update_text(INSTRUCTION_TEXT[GameState.RACE_DONE], False)
         self.game_state = self.game_state.advance_state()
 
     def _create_finish_str(self):
@@ -226,6 +228,7 @@ class Randomizer:
                 self.info_box.draw(self.screen)
         if self.game_state == GameState.RACE_DONE:
             self.final_box.draw(self.screen)
+            self.info_box.draw(self.screen)
         pygame.display.update()
         pygame.display.flip()
         self.clock.tick(60)
