@@ -111,9 +111,15 @@ class Randomizer:
         for i in range(self.num_people):
             starting_pos = (self.len_from_edge / 2, (padding * i) + 50 + (padding / 2))
             name = people[i]
-            racer = Racer(name, starting_pos, self.font)
+            racer = Racer(name, starting_pos, self.font, self.num_people)
             self.racers.append(racer)
         self.finished = []
+
+    def _reset_race(self):
+        self.game_state = GameState.RACE_BEGIN
+        surf_height = height - grass_padding
+        padding = surf_height/self.num_people
+        self._setup_racers(padding)
 
     def _setup_finish_box(self, str):
         self.final_box = TextBox(self.font, FONT_SIZE, (width/2, 20), str, False)
@@ -156,6 +162,9 @@ class Randomizer:
                     self.game_state = self.game_state.advance_state()
                     for racer in self.racers:
                         racer.should_move = True
+            if self.game_state == GameState.RACE_DONE:
+                if event.type == pygame.KEYDOWN and event.key == pygame.K_r:
+                    self._reset_race()
 
     ### Game Logic ###
     
@@ -167,8 +176,10 @@ class Randomizer:
         elif self.game_state == GameState.END_INPUT:
             self._setup_race()
         elif self.game_state == GameState.RACE_RUNNING:
-            for racer in self.racers:
-                racer.accelerate()
+            sorted_racers = self.racers.copy()
+            sorted_racers.sort(key=lambda x: x.position.x, reverse=True)
+            for pos, racer in enumerate(sorted_racers):
+                racer.accelerate(pos+1)
                 racer.move()
                 if racer.is_finished(w - self.len_from_edge + racer.radius, len(self.finished)):
                     self.finished.append(racer)
