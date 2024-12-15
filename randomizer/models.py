@@ -26,14 +26,13 @@ class GameObject:
         self.position = self.position + (self.velocity, 0)
 
 class Racer(GameObject):
-    # Velocity randomizers
-    ACCELERATION = random.uniform(0, 0.3)
-    LOW_VARIATION = random.uniform(0, 2)
-    HIGH_VARIATION = random.uniform(7, 9)
-
     TEXT_COLOR = (1, 1, 1)
 
-    def __init__(self, name, position, font):
+    def __init__(self, name, position, font, num_racers):
+        # self.ACCELERATION = random.uniform(0, 0.3)
+        # self.LOW_VARIATION = random.uniform(0, 2)
+        # self.HIGH_VARIATION = random.uniform(7, 9)
+
         # Animation randomizers
         self.SINE_OFFSET = random.uniform(0, 200)
 
@@ -44,6 +43,7 @@ class Racer(GameObject):
         self.initials = self._get_short_name(name)
         self.should_move = False
         self.initial_height = position[1]
+        self.num_racers = num_racers
         # self.direction = Vector2(0, 0)
         super().__init__(position, load_sprite("circle"), random.uniform(1, 3))
 
@@ -72,22 +72,34 @@ class Racer(GameObject):
             self.finished_textRect.center = self.position + Vector2(self.radius * 2, 0)
             surface.blit(self.finished_text, self.finished_textRect)
 
-    # TODO: Scale based on distance from end
-    def accelerate(self):
+    def accelerate(self, pos):
         if self.should_move:
+            low_multi = 0
+            high_multi = 0
+            self.ACCELERATION = random.uniform(0, 0.3)
+
+            if pos/self.num_racers < 0.35:
+                low_multi = 1.5
+            if pos/self.num_racers > 0.65:
+                high_multi = 1.5
+
+            self.LOW_VARIATION = random.uniform(0, 2 + low_multi)
+            self.HIGH_VARIATION = random.uniform(7 - high_multi, 9)
+
             rand_num = random.uniform(0, 10)
             if rand_num > self.HIGH_VARIATION:
                 self.velocity += self.ACCELERATION
             elif rand_num < self.LOW_VARIATION:
                 self.velocity -= self.ACCELERATION
-                self.velocity = max(self.velocity, 1)
+                self.velocity = max(self.velocity, 0.5)
             # else nothing
 
     def move(self):
         if self.should_move:
             super().move()  
+            # Animate up and down
             t = pygame.time.get_ticks() / 2
-            y = math.sin(t/100.0 + self.SINE_OFFSET) * 10
+            y = math.sin(t/100.0 + self.SINE_OFFSET) * 50/self.num_racers
             self.position = Vector2(self.position.x, self.initial_height + y)
             
     def is_finished(self, finish_pos, num_finishers):
