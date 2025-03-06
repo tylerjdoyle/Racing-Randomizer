@@ -5,7 +5,11 @@
         "MR",
         "CC",
         "DT",
-        "DY"
+        "DY",
+        "BC",
+        "BR",
+        "KG",
+        "TS"
     ],
     "Full Team": [
         "TD",
@@ -14,11 +18,15 @@
         "CC",
         "DT",
         "DY",
-        "HH",
-        "DR",
-        "JN",
+        "BC",
+        "BR",
+        "KG",
+        "TS",
         "AD",
         "TL",
-        "JW"
+        "JW",
+        "HH",
+        "DR",
+        "JN"
     ]
 }
