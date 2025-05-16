@@ -3,6 +3,7 @@ import random
 import asyncio
 import sys
 import pyperclip
+import time
 from enum import Enum
 
 from models import Racer, TextBox, SelectBox, TypeableTextBox
@@ -43,6 +44,7 @@ INSTRUCTION_TEXT = {
 
 class Randomizer: 
     def __init__(self):
+        random.seed(time.time())
         self.game_state = GameState.INIT_SCREEN
         self.init_pygame()
         self.init_screen()
